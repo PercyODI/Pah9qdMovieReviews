@@ -19,12 +19,17 @@ public class Pah9qdMovieReviews extends Application {
     
     @Override
     public void start(Stage stage) throws Exception {
-        Parent root = FXMLLoader.load(getClass().getResource("FXMLDocument.fxml"));
+        FXMLLoader loader = new FXMLLoader(getClass().getResource("MovieReviewsFXML.fxml"));
+        Parent root = loader.load();
+        MovieReviewsFXMLController controller = loader.getController();
         
         Scene scene = new Scene(root);
         
         stage.setScene(scene);
+        stage.setTitle("Pah9qd Movie Reviews");
         stage.show();
+        
+        controller.ready(stage, scene);
     }
 
     /**
