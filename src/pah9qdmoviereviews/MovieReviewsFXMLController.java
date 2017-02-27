@@ -35,7 +35,7 @@ import javafx.stage.Stage;
  *
  * @author pah9qd
  */
-public class MovieReviewsFXMLController implements Initializable {
+public class MovieReviewsFXMLController implements Initializable, IExceptionAlert {
 
     private Stage stage;
     private Scene scene;
@@ -65,7 +65,7 @@ public class MovieReviewsFXMLController implements Initializable {
         this.stage = stage;
         this.scene = scene;
 
-        movieReviewManager = new NYTMoviewReviewManager();
+        movieReviewManager = new NYTMoviewReviewManager(this);
 //        movieReviewItems = FXCollections.observableArrayList();
         webEngine = webView.getEngine();
         listView.setItems(movieReviewManager.movieReviews);
@@ -81,6 +81,10 @@ public class MovieReviewsFXMLController implements Initializable {
             if(event.getCode() == KeyCode.ENTER)
                 loadReviews(searchTextField.getText());
         });
+        searchTextField.textProperty().addListener((observable, oldValue, newValue) -> {
+            if(newValue != null && !newValue.isEmpty())
+                loadReviews(newValue);
+        });
     }
 
     private void loadReviews(String searchString) {
@@ -91,12 +95,13 @@ public class MovieReviewsFXMLController implements Initializable {
             return;
         }
         
-        try {
-            movieReviewManager.searchApi(searchString);
-        } catch (Exception ex) {
-            displayExceptionAlert(ex);
-            return;
-        }
+        movieReviewManager.searchApi(searchString);
+//        try {
+//            movieReviewManager.searchApi(searchString);
+//        } catch (Exception ex) {
+//            displayExceptionAlert(ex);
+//            return;
+//        }
         
         // Display found text
         foundText.setText("Found " + movieReviewManager.getNumMovieReviews() + " results for " + searchString + ".");
@@ -120,7 +125,7 @@ public class MovieReviewsFXMLController implements Initializable {
         alert.showAndWait();
     }
 
-    private void displayExceptionAlert(Exception ex) {
+    public void displayExceptionAlert(Exception ex) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
         alert.setTitle("Exception");
         alert.setHeaderText("An Exception Occurred!");

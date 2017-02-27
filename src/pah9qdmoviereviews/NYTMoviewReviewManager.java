@@ -32,50 +32,69 @@ public class NYTMoviewReviewManager {
 
     private final String baseUrlString = "https://api.nytimes.com/svc/movies/v2/reviews/search.json";
     private final String apiKey = "74d25e46dcaa4fbc905160ac96eb0798";
-
+    
+    private IExceptionAlert exceptionAlert;
+    private Thread searchingThread;
     public ObservableList<NYTMovieReview> movieReviews;
 
-    public NYTMoviewReviewManager() {
+    public NYTMoviewReviewManager(IExceptionAlert exceptionAlert) {
         movieReviews = FXCollections.observableArrayList();
+        this.exceptionAlert = exceptionAlert;
     }
 
-    public void searchApi(String searchString) throws Exception {
-        if (searchString == null || searchString.isEmpty()) {
-            throw new Exception("The search string was empty");
-        }
-
-        String encodedSearchString;
-        try {
-            encodedSearchString = URLEncoder.encode(searchString, "UTF-8");
-        } catch (UnsupportedEncodingException ex) {
-            throw ex;
-        }
-
-        URL url;
-        try {
-            url = new URL(baseUrlString + "?query=" + encodedSearchString + "&api-key=" + apiKey);
-        } catch (MalformedURLException ex) {
-            throw ex;
-        }
-
-        String jsonString = "";
-        try {
-            BufferedReader in = new BufferedReader(new InputStreamReader(url.openStream()));
-
-            String inputLine;
-            while ((inputLine = in.readLine()) != null) {
-                jsonString += inputLine;
+    public void searchApi(String searchString) {
+        Runnable searchRunnable = () -> {
+            if (searchString == null || searchString.isEmpty()) {
+                exceptionAlert.displayExceptionAlert(new Exception("The search string was empty"));
+                return;
             }
-            in.close();
-        } catch (IOException ex) {
-            throw ex;
-        }
 
-        try {
-            parseJsonMovieReview(jsonString);
-        } catch (Exception ex) {
-            throw ex;
-        }
+            String encodedSearchString;
+            try {
+                encodedSearchString = URLEncoder.encode(searchString, "UTF-8");
+            } catch (UnsupportedEncodingException ex) {
+                exceptionAlert.displayExceptionAlert(ex);
+                return;
+            }
+
+            URL url;
+            try {
+                url = new URL(baseUrlString + "?query=" + encodedSearchString + "&api-key=" + apiKey);
+            } catch (MalformedURLException ex) {
+                exceptionAlert.displayExceptionAlert(ex);
+                return;
+            }
+
+            String jsonString = "";
+            try {
+                BufferedReader in = new BufferedReader(new InputStreamReader(url.openStream()));
+
+                String inputLine;
+                while ((inputLine = in.readLine()) != null) {
+                    jsonString += inputLine;
+                }
+                in.close();
+            } catch (IOException ex) {
+                exceptionAlert.displayExceptionAlert(ex);
+                return;
+            }
+
+            try {
+                parseJsonMovieReview(jsonString);
+            } catch (Exception ex) {
+                exceptionAlert.displayExceptionAlert(ex);
+                return;
+            }
+        };
+        
+//        if(searchingThread != null)
+//            searchingThread.
+        new Thread(searchRunnable).start();
+//        try {
+//            searchThread.run();
+//        } catch (RuntimeException ex) {
+//            throw ex;
+//        }
     }
 
     private void parseJsonMovieReview(String jsonString) throws Exception {
@@ -119,21 +138,22 @@ public class NYTMoviewReviewManager {
                 JSONObject review = (JSONObject) result;
                 String displayTitle = (String) review.getOrDefault("display_title", "");
                 String mpaaRating = (String) review.getOrDefault("mpaa_rating", "");
-                
+
                 // Handle and parse the date
                 Date openingDate = null;
                 String openingDateStr = (String) review.get("opening_date");
-                if(openingDateStr != null && !openingDateStr.isEmpty()) {
+                if (openingDateStr != null && !openingDateStr.isEmpty()) {
                     DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-DD", Locale.ENGLISH);
                     openingDate = dateFormat.parse(openingDateStr);
                 }
-                
+
                 // Handle and parse the url
                 URL url = null;
                 JSONObject link = (JSONObject) review.get("link");
                 String urlStr = (String) link.get("url");
-                if(urlStr != null && !urlStr.isEmpty())
+                if (urlStr != null && !urlStr.isEmpty()) {
                     url = new URL(urlStr);
+                }
 
                 movieReviews.add(new NYTMovieReview(displayTitle, mpaaRating, openingDate, url));
 
