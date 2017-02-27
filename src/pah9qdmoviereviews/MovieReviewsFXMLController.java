@@ -72,7 +72,8 @@ public class MovieReviewsFXMLController implements Initializable {
         listView.getSelectionModel().selectedItemProperty().addListener(new ChangeListener<NYTMovieReview>() {
             @Override
             public void changed(ObservableValue<? extends NYTMovieReview> observable, NYTMovieReview oldValue, NYTMovieReview newValue) {
-                webEngine.load(newValue.getUrl().toString());
+                if (newValue != null)
+                    webEngine.load(newValue.getUrl().toString());
             }
         });
 
