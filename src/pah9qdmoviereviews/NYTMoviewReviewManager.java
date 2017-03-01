@@ -33,9 +33,8 @@ public class NYTMoviewReviewManager {
 
     public ObservableList<NYTMovieReview> movieReviews;
 
-    public NYTMoviewReviewManager(IExceptionAlert exceptionAlert) {
+    public NYTMoviewReviewManager() {
         movieReviews = FXCollections.observableArrayList();
-        this.exceptionAlert = exceptionAlert;
     }
 
     public void addExceptionChangeSupport(PropertyChangeListener listener) {
