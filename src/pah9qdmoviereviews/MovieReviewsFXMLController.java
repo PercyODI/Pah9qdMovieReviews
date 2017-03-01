@@ -9,6 +9,7 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.net.URL;
 import java.util.ResourceBundle;
+import javafx.application.Platform;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
@@ -66,43 +67,51 @@ public class MovieReviewsFXMLController implements Initializable {
         this.scene = scene;
 
         movieReviewManager = new NYTMoviewReviewManager();
+        movieReviewManager.addExceptionChangeSupport(((evt) -> {
+            Platform.runLater(() -> displayExceptionAlert((Exception)evt.getNewValue()));
+        }));
+        
+        
+        
 //        movieReviewItems = FXCollections.observableArrayList();
         webEngine = webView.getEngine();
         listView.setItems(movieReviewManager.movieReviews);
         listView.getSelectionModel().selectedItemProperty().addListener(new ChangeListener<NYTMovieReview>() {
             @Override
             public void changed(ObservableValue<? extends NYTMovieReview> observable, NYTMovieReview oldValue, NYTMovieReview newValue) {
-                if (newValue != null)
+                if (newValue != null) {
                     webEngine.load(newValue.getUrl().toString());
+                }
             }
         });
 
         searchTextField.setOnKeyPressed((event) -> {
-            if(event.getCode() == KeyCode.ENTER)
+            if (event.getCode() == KeyCode.ENTER) {
                 loadReviews(searchTextField.getText());
+            }
         });
     }
 
     private void loadReviews(String searchString) {
         foundText.setText("");
-        
-        if(searchString == null || searchString.isEmpty()){
+
+        if (searchString == null || searchString.isEmpty()) {
             displayErrorAlert("Search field cannot be blank. Please enter one or more words to search for.");
             return;
         }
-        
+
         try {
             movieReviewManager.searchApi(searchString);
         } catch (Exception ex) {
             displayExceptionAlert(ex);
             return;
         }
-        
+
         // Display found text
         foundText.setText("Found " + movieReviewManager.getNumMovieReviews() + " results for " + searchString + ".");
-        
+
         //Scroll newslist back to top
-        if(movieReviewManager.getNumMovieReviews() > 0) {
+        if (movieReviewManager.getNumMovieReviews() > 0) {
             listView.scrollTo(0);
         }
 
@@ -111,7 +120,7 @@ public class MovieReviewsFXMLController implements Initializable {
 //            movieReviewItems.add(review.getDisplayTitle());
 //        }
     }
-    
+
     private void displayErrorAlert(String message) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
         alert.setTitle("Error");
@@ -154,13 +163,27 @@ public class MovieReviewsFXMLController implements Initializable {
         alert.showAndWait();
     }
 
+    private void displayAboutAlert() {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("About");
+        alert.setHeaderText("New York Times Moview Review Viewer");
+        alert.setContentText("An application for searching and viewing movie reviews from the New York Times. Developed by Pearse Hutson.");
+
+        alert.showAndWait();
+    }
+
     @FXML
     private void handleSearchBtn(ActionEvent e) {
         loadReviews(searchTextField.getText());
     }
-    
+
     @FXML
     private void handleUpdateMenuBtn(ActionEvent e) {
         loadReviews(searchTextField.getText());
+    }
+
+    @FXML
+    private void handleAboutMenuBtn(ActionEvent e) {
+        displayAboutAlert();
     }
 }

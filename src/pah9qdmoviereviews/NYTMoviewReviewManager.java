@@ -5,19 +5,14 @@
  */
 package pah9qdmoviereviews;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.UnsupportedEncodingException;
-import java.net.MalformedURLException;
+import java.beans.PropertyChangeListener;
+import java.beans.PropertyChangeSupport;
 import java.net.URL;
-import java.net.URLEncoder;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Date;
-import java.util.List;
 import java.util.Locale;
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import org.json.simple.JSONArray;
@@ -33,53 +28,45 @@ public class NYTMoviewReviewManager {
     private final String baseUrlString = "https://api.nytimes.com/svc/movies/v2/reviews/search.json";
     private final String apiKey = "74d25e46dcaa4fbc905160ac96eb0798";
 
+    // Allow Exceptions to move up to UI
+    private final PropertyChangeSupport exceptionChangeSupport = new PropertyChangeSupport(this);
+
     public ObservableList<NYTMovieReview> movieReviews;
 
     public NYTMoviewReviewManager() {
         movieReviews = FXCollections.observableArrayList();
     }
 
+    public void addExceptionChangeSupport(PropertyChangeListener listener) {
+        this.exceptionChangeSupport.addPropertyChangeListener(listener);
+    }
+
+    public void removeExceptionChangeSupport(PropertyChangeListener listener) {
+        this.exceptionChangeSupport.removePropertyChangeListener(listener);
+    }
+
     public void searchApi(String searchString) throws Exception {
-        if (searchString == null || searchString.isEmpty()) {
-            throw new Exception("The search string was empty");
-        }
-
-        String encodedSearchString;
-        try {
-            encodedSearchString = URLEncoder.encode(searchString, "UTF-8");
-        } catch (UnsupportedEncodingException ex) {
-            throw ex;
-        }
-
-        URL url;
-        try {
-            url = new URL(baseUrlString + "?query=" + encodedSearchString + "&api-key=" + apiKey);
-        } catch (MalformedURLException ex) {
-            throw ex;
-        }
-
-        String jsonString = "";
-        try {
-            BufferedReader in = new BufferedReader(new InputStreamReader(url.openStream()));
-
-            String inputLine;
-            while ((inputLine = in.readLine()) != null) {
-                jsonString += inputLine;
+        ApiTask apiTask = new ApiTask(searchString, baseUrlString, apiKey) {
+            @Override
+            public void runOnError(Exception ex) {
+                exceptionChangeSupport.firePropertyChange("Exception", new Exception(), ex);
             }
-            in.close();
-        } catch (IOException ex) {
-            throw ex;
-        }
 
-        try {
-            parseJsonMovieReview(jsonString);
-        } catch (Exception ex) {
-            throw ex;
-        }
+            @Override
+            public void runOnSuccess(String jsonString) {
+                try {
+                    parseJsonMovieReview(jsonString);
+                } catch (Exception ex) {
+                    exceptionChangeSupport.firePropertyChange("Exception", new Exception(), ex);
+                }
+            }
+        };
+        new Thread(apiTask).start();
+
     }
 
     private void parseJsonMovieReview(String jsonString) throws Exception {
-        movieReviews.clear();
+        Platform.runLater(() -> movieReviews.clear());
 
         if (jsonString == null || jsonString.isEmpty()) {
             return;
@@ -119,24 +106,28 @@ public class NYTMoviewReviewManager {
                 JSONObject review = (JSONObject) result;
                 String displayTitle = (String) review.getOrDefault("display_title", "");
                 String mpaaRating = (String) review.getOrDefault("mpaa_rating", "");
-                
+
                 // Handle and parse the date
                 Date openingDate = null;
                 String openingDateStr = (String) review.get("opening_date");
-                if(openingDateStr != null && !openingDateStr.isEmpty()) {
+                if (openingDateStr != null && !openingDateStr.isEmpty()) {
                     DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-DD", Locale.ENGLISH);
                     openingDate = dateFormat.parse(openingDateStr);
                 }
-                
+
                 // Handle and parse the url
                 URL url = null;
                 JSONObject link = (JSONObject) review.get("link");
                 String urlStr = (String) link.get("url");
-                if(urlStr != null && !urlStr.isEmpty())
+                if (urlStr != null && !urlStr.isEmpty()) {
                     url = new URL(urlStr);
+                }
 
-                movieReviews.add(new NYTMovieReview(displayTitle, mpaaRating, openingDate, url));
+                NYTMovieReview movieReview = new NYTMovieReview(displayTitle, mpaaRating, openingDate, url);
 
+                Platform.runLater(() -> {
+                    movieReviews.add(movieReview);
+                });
             } catch (Exception ex) {
                 throw ex;
             }

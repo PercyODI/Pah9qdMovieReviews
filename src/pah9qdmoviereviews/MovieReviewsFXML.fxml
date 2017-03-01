@@ -24,14 +24,14 @@
           </Menu>
           <Menu mnemonicParsing="false" text="Help">
             <items>
-              <MenuItem mnemonicParsing="false" text="About" />
+              <MenuItem mnemonicParsing="false" onAction="#handleAboutMenuBtn" text="About" />
             </items>
           </Menu>
         </menus>
       </MenuBar>
       <HBox alignment="CENTER_LEFT" prefHeight="27.0" prefWidth="600.0" VBox.vgrow="NEVER">
          <children>
-            <TextField fx:id="searchTextField" prefHeight="25.0" prefWidth="269.0">
+            <TextField fx:id="searchTextField" prefHeight="25.0" prefWidth="269.0" HBox.hgrow="ALWAYS">
                <HBox.margin>
                   <Insets right="15.0" />
                </HBox.margin>
