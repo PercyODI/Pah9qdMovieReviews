@@ -36,7 +36,7 @@ import javafx.stage.Stage;
  *
  * @author pah9qd
  */
-public class MovieReviewsFXMLController implements Initializable {
+public class MovieReviewsFXMLController implements Initializable, IExceptionAlert {
 
     private Stage stage;
     private Scene scene;
@@ -90,6 +90,10 @@ public class MovieReviewsFXMLController implements Initializable {
                 loadReviews(searchTextField.getText());
             }
         });
+        searchTextField.textProperty().addListener((observable, oldValue, newValue) -> {
+            if(newValue != null && !newValue.isEmpty())
+                loadReviews(newValue);
+        });
     }
 
     private void loadReviews(String searchString) {
@@ -129,7 +133,7 @@ public class MovieReviewsFXMLController implements Initializable {
         alert.showAndWait();
     }
 
-    private void displayExceptionAlert(Exception ex) {
+    public void displayExceptionAlert(Exception ex) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
         alert.setTitle("Exception");
         alert.setHeaderText("An Exception Occurred!");
