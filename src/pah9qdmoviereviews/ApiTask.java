@@ -23,6 +23,8 @@ public abstract class ApiTask implements Runnable {
     private String baseUrlString;
     private String apiKey;
     
+    private boolean exit = false;
+    
     public ApiTask(String searString, String baseUrlString, String apiKey) {
         this.searchString = searString;
         this.baseUrlString = baseUrlString;
@@ -58,14 +60,21 @@ public abstract class ApiTask implements Runnable {
 
             String inputLine;
             while ((inputLine = in.readLine()) != null) {
+                if(exit)
+                    return;
                 jsonString += inputLine;
             }
             in.close();
         } catch (IOException ex) {
             runOnError(ex);
+            return;
         }
         
         runOnSuccess(jsonString);
+    }
+    
+    public void exit() {
+        exit = true;
     }
     
     public abstract void runOnError(Exception ex);

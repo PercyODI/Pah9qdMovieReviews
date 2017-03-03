@@ -29,27 +29,24 @@ public class NYTMoviewReviewManager {
     private final String apiKey = "74d25e46dcaa4fbc905160ac96eb0798";
 
     // Allow Exceptions to move up to UI
-    private final PropertyChangeSupport exceptionChangeSupport = new PropertyChangeSupport(this);
-
-    public ObservableList<NYTMovieReview> movieReviews;
+    private final PropertyChangeSupport propertyChangeSupport = new PropertyChangeSupport(this);
 
     public NYTMoviewReviewManager() {
-        movieReviews = FXCollections.observableArrayList();
     }
 
-    public void addExceptionChangeSupport(PropertyChangeListener listener) {
-        this.exceptionChangeSupport.addPropertyChangeListener(listener);
+    public void addPropertyChangeSupport(PropertyChangeListener listener) {
+        this.propertyChangeSupport.addPropertyChangeListener(listener);
     }
 
-    public void removeExceptionChangeSupport(PropertyChangeListener listener) {
-        this.exceptionChangeSupport.removePropertyChangeListener(listener);
+    public void removePropertyChangeSupport(PropertyChangeListener listener) {
+        this.propertyChangeSupport.removePropertyChangeListener(listener);
     }
 
     public void searchApi(String searchString) throws Exception {
         ApiTask apiTask = new ApiTask(searchString, baseUrlString, apiKey) {
             @Override
             public void runOnError(Exception ex) {
-                exceptionChangeSupport.firePropertyChange("Exception", new Exception(), ex);
+                propertyChangeSupport.firePropertyChange("Exception", null, ex);
             }
 
             @Override
@@ -57,7 +54,7 @@ public class NYTMoviewReviewManager {
                 try {
                     parseJsonMovieReview(jsonString);
                 } catch (Exception ex) {
-                    exceptionChangeSupport.firePropertyChange("Exception", new Exception(), ex);
+                    propertyChangeSupport.firePropertyChange("Exception", null, ex);
                 }
             }
         };
@@ -66,7 +63,8 @@ public class NYTMoviewReviewManager {
     }
 
     private void parseJsonMovieReview(String jsonString) throws Exception {
-        Platform.runLater(() -> movieReviews.clear());
+        propertyChangeSupport.firePropertyChange("Clear Movie Reviews", null, null);
+        DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-DD", Locale.ENGLISH);
 
         if (jsonString == null || jsonString.isEmpty()) {
             return;
@@ -103,44 +101,39 @@ public class NYTMoviewReviewManager {
 
         for (Object result : results) {
             try {
+                NYTMovieReview movieReview = new NYTMovieReview();
                 JSONObject review = (JSONObject) result;
-                String displayTitle = (String) review.getOrDefault("display_title", "");
-                String mpaaRating = (String) review.getOrDefault("mpaa_rating", "");
+                movieReview.setDisplayTitle((String) review.getOrDefault("display_title", ""));
+                movieReview.setMpaaRating((String) review.getOrDefault("mpaa_rating", ""));
+                movieReview.setHeadline((String) review.getOrDefault("headline", ""));
+                movieReview.setSummary((String) review.getOrDefault("summary_short", ""));
+
+                JSONObject link = (JSONObject) review.get("link");
+                if (link != null) {
+                    movieReview.setArticleLink((String) link.getOrDefault("url", ""));
+                }
+
+                JSONObject multimedia = (JSONObject) review.get("multimedia");
+                if (multimedia != null) {
+                    movieReview.setPictureLink((String) multimedia.getOrDefault("src", ""));
+                }
 
                 // Handle and parse the date
-                Date openingDate = null;
                 String openingDateStr = (String) review.get("opening_date");
                 if (openingDateStr != null && !openingDateStr.isEmpty()) {
-                    DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-DD", Locale.ENGLISH);
-                    openingDate = dateFormat.parse(openingDateStr);
+                    movieReview.setOpeningDate(dateFormat.parse(openingDateStr));
                 }
 
-                // Handle and parse the url
-                URL url = null;
-                JSONObject link = (JSONObject) review.get("link");
-                String urlStr = (String) link.get("url");
-                if (urlStr != null && !urlStr.isEmpty()) {
-                    url = new URL(urlStr);
+                String publicationDateStr = (String) review.get("publication_date");
+                if (publicationDateStr != null && !publicationDateStr.isEmpty()) {
+                    movieReview.setPublicationDate(dateFormat.parse(publicationDateStr));
                 }
 
-                NYTMovieReview movieReview = new NYTMovieReview(displayTitle, mpaaRating, openingDate, url);
-
-                Platform.runLater(() -> {
-                    movieReviews.add(movieReview);
-                });
+                propertyChangeSupport.firePropertyChange("Add Movie Review", null, movieReview);
             } catch (Exception ex) {
                 throw ex;
             }
-
         }
-
-    }
-
-    public ObservableList<NYTMovieReview> getMovieReviews() {
-        return movieReviews;
-    }
-
-    public int getNumMovieReviews() {
-        return movieReviews.size();
+        propertyChangeSupport.firePropertyChange("Completed", null, null);
     }
 }
